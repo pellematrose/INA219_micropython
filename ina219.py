@@ -17,7 +17,8 @@ class ina219:
     def __init__(self, address, iic):
         self.address = address
         self.i2c = iic
-        
+    
+    # get vshunt voltage
     def vshunt(self):
         # Read Shunt register 1, 2 bytes
         reg_bytes = self.i2c.readfrom_mem(self.address, ina219.REG_SHUNTVOLTAGE, 2)
@@ -30,6 +31,7 @@ class ina219:
             sign = 1
         return (float(reg_value) * 1e-4 * sign) #1e-4
     
+    # get calculated current
     def current(self):
         # Read current register
         reg_bytes = self.i2c.readfrom_mem(self.address, ina219.REG_CURRENT, 2)
@@ -43,18 +45,28 @@ class ina219:
             sign = 1
         return reg_value * current_lsb
     
+    # get vbus 
     def vbus(self):
         # Read Vbus voltage
         reg_bytes = self.i2c.readfrom_mem(self.address, ina219.REG_BUSVOLTAGE, 2)
         reg_value = int.from_bytes(reg_bytes, 'big') >> 3
         return float(reg_value) * 0.004
     
+    # get calculated power
     def power(self):
         # Read Power register
         reg_bytes = self.i2c.readfrom_mem(self.address, ina219.REG_POWER, 2)
         reg_value = int.from_bytes(reg_bytes, 'big')
         return float(reg_value) * 20 * current_lsb
-        
+    
+    # configure function
+    # parameter:    shunt   value in OHM
+    #               BRNG    bus voltage range 0=16V, 1=32V
+    #               PG      set gain and range
+    #               BADC    Bus ADC resolution and averaging
+    #               SADC    Shunt ADC resolution and averaging
+    #               MODE    Operation mode
+    # See datasheet for reference
     def configure(self, shunt, BRNG, PG, BADC, SADC, MODE):
         global current_lsb
         
@@ -80,9 +92,7 @@ class ina219:
         config_bytes = config_reg.to_bytes(2, 'big')
         
         #print("Cal_reg_val: %d" % cal_reg_val)
-        #i2c.writeto_mem(conf.address, conf.REG_CONFIG, b'\x01\x9F') # PG = 1 40mV
-        #i2c.writeto_mem(conf.address, conf.REG_CONFIG, b'\x09\x9F') # PG = /2 80mV
         self.i2c.writeto_mem(self.address, ina219.REG_CONFIG, config_bytes) # PG = /8 320mV
-        #self.i2c.writeto_mem(self.address, ina219.REG_CALIBRATION, b'\x00\x00')
         self.i2c.writeto_mem(self.address, ina219.REG_CALIBRATION, cal_reg_bytes)
+        #self.i2c.writeto_mem(self.address, ina219.REG_CALIBRATION, b'\x00\x00')
         
